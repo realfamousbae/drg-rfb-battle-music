@@ -16,6 +16,7 @@ asset_path,name,category,cue,cue_loops,duration_sec,shared_with,sound_class,atte
 /Game/Audio/Music/Boss/AudioFiles/ST_InterstellarNightmares_Master_3,ST_InterstellarNightmares_Master_3,boss,St_InsterstellarNightmares_Cue,true,270.40,,Music_Boss,,,,false,true
 /Game/Audio/Music/Boss/AudioFiles/St_Nova_Master_1,St_Nova_Master_1,boss,St_Boss_Music_Cue,true,232.80,,Music_Boss,,,,false,true
 /Game/Audio/Music/Boss/AudioFiles/St_Stalker_Master_1,St_Stalker_Master_1,boss,St_Stalker_Cue,true,178.91,,Music_Boss,,,,false,true
+/Game/Audio/Music/Boss/AudioFiles/RC_Rift_Master3_Looping,RC_Rift_Master3_Looping,boss,RC_Rift_Looping_1_Cue,true,134.74,,Music_Boss,,,,false,false
 /Game/Audio/Music/Music_Menu/ST_Where_They_Really_DareDLoop_1,ST_Where_They_Really_DareDLoop_1,deepdive,St_DeepDives_InbetweenScreen_Cue,true,52.36,,Music_Menu,,,,false,true
 /Game/Audio/Music/Music_EndWave/AudioFiles/St_Action_Master_1,St_Action_Master_1,endscreen,St_EndMission_Completed_Cue,false,138.95,,Music_Menu_Endscreen,,,,false,true
 /Game/Audio/Music/Music_EndWave/AudioFiles/St_SW_Master_1,St_SW_Master_1,extraction,St_SW_Edited_A_01_Cue,true,317.05,,Music_Endwave,,,,false,true
@@ -60,5 +61,11 @@ asset_path,name,category,cue,cue_loops,duration_sec,shared_with,sound_class,atte
 /Game/Audio/Music/Music_Wave/AudioFilesSingle/St_HoldMyBeard_Master_1,St_HoldMyBeard_Master_1,swarm,St_HoldMyBeard_Cue,false,135.95,,Music_Action,,,,false,true
 /Game/Audio/Music/Music_Wave/AudioFilesSingle/St_Wave_Master_1,St_Wave_Master_1,swarm,St_Wave_Cue,false,133.55,,Music_Action,,,,false,true
 /Game/Audio/Music/Music_Wave/AudioFilesSingle/ST_DOTSA_Master_3,ST_DOTSA_Master_3,swarm,St_DOTSA_Cue,true,132.00,,Music_Action,,,,false,true
+/Game/Audio/Music/Boss/AudioFiles/RC_Rift_V2_Short_intro,RC_Rift_V2_Short_intro,unused,,,266.62,,,,,,false,true
+/Game/Audio/Music/Boss/AudioFiles/RC_Rift_V3_Shorter,RC_Rift_V3_Shorter,unused,,,261.58,,,,,,false,true
+/Game/Audio/Music/Boss/AudioFiles/RC_Rift_V2_Shorter_intro,RC_Rift_V2_Shorter_intro,unused,,,260.64,,,,,,false,true
+/Game/Audio/Music/Boss/AudioFiles/RC_Rift_Looping_1,RC_Rift_Looping_1,unused,,,236.03,,,,,,false,true
 /Game/Audio/Music/Music_EndWave/AudioFiles/St_Action_Edited_B_3,St_Action_Edited_B_3,unused,,,138.67,,,,,,false,true
+/Game/Audio/Music/Boss/AudioFiles/RC_DRGS5_Rift_Final_V4_Looping_1,RC_DRGS5_Rift_Final_V4_Looping_1,unused,,,134.74,,,,,100,false,true
+/Game/Audio/Music/Boss/AudioFiles/RC_DRGS5_Rift_Final_V4_Looping_2,RC_DRGS5_Rift_Final_V4_Looping_2,unused,,,134.74,,,,,100,false,true
 /Game/Audio/Music/Music_Menu/DeepDives_InbetweenScreen_Music,DeepDives_InbetweenScreen_Music,unused,,,52.38,,,,,,false,false

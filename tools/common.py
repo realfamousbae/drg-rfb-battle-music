@@ -50,6 +50,13 @@ CATEGORY_BY_NAME = {
     "DeepDives_InbetweenScreen_Music": "unused",
     "St_Goodbye_Master_1": "memorial",
     "DiscoverMusic_1": "jingle",
+    # Core Stone drafts next to RC_Rift_Master3_Looping: no cue in the 1.40 pak plays them
+    "RC_Rift_Looping_1": "unused",
+    "RC_Rift_V2_Short_intro": "unused",
+    "RC_Rift_V2_Shorter_intro": "unused",
+    "RC_Rift_V3_Shorter": "unused",
+    "RC_DRGS5_Rift_Final_V4_Looping_1": "unused",
+    "RC_DRGS5_Rift_Final_V4_Looping_2": "unused",
 }
 # wave -> other cue that also plays it
 SHARED_WITH = {"St_Deep_Master_1": "LoadingScreenMusic_Cue (loading)"}

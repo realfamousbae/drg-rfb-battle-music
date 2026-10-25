@@ -27,9 +27,10 @@ ST_SabotageOfMolly_Master_3,20
 St_RobotGetaway_Master_1,21
 St_Marching_Master_1,22
 ST_WhereTheyReallyDare_Master_3,23
-# boss (dreadnought)
+# boss (dreadnought) + Core Stone rift
 ST_InterstellarNightmares_Master_3,24
 St_Nova_Master_1,25
+RC_Rift_Master3_Looping,25
 St_Stalker_Master_1,26
 # ambient (cave) + loading screen via St_Deep_Master_1
 St_Alien_Master_1,27
