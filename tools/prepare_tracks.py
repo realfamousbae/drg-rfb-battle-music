@@ -3,6 +3,7 @@
 
     python tools/prepare_tracks.py measure path/to/vanilla_export.ogg ...   # LUFS / true peak of any files
     python tools/prepare_tracks.py build [--categories swarm,pressure,...] [--fit-slots] [--order shuffle]
+                                         [--rotate swarm,ambient]
 
 build reads tracks/, data/mission_slots.csv, data/mapping.csv (slot -> track) and data/cuts.csv (drop
 of each track) and writes build/import/<Audio/Music/...>/<WaveName>.wav plus build/import/manifest.csv
@@ -16,6 +17,14 @@ Per slot (data/mission_slots.csv, column cue_loops):
   one-shot cue the track plays from its drop to `end` and fades out; with --fit-slots it is rendered at
                exactly the vanilla length (if the game cuts mission music there, like the jukebox - test
                in game first).
+
+--rotate CATEGORIES: the game picks one cue per category for the whole mission, so a cue with one wave means
+one track per mission. For the listed categories every vanilla cue is replaced by a copy of a master cue
+(Random over all waves of the category, under a Looping node where the vanilla cue loops; docs/rotation.md),
+written to build/import/cues.csv for ue_cues.py and collect_cooked.py. Waves of these categories are
+rendered from the drop to the natural end of the song (no loop tail), since the next play of the cue picks
+another track. All cues of a category get one VolumeMultiplier and one Priority, the medians of the vanilla
+ones, so a mission does not sound different depending on which cue the game picked.
 Requires ffmpeg and ffprobe on PATH.
 """
 import argparse
@@ -24,17 +33,21 @@ import json
 import random
 import re
 import shutil
+import statistics
 import subprocess
 from collections import defaultdict
 from pathlib import Path
 
-from common import (BUILD, CUTS_CSV, DEFAULT_CATEGORIES, IMPORT_DIR, MANIFEST_CSV, MAPPING_CSV, REPO, WAVE_PROPS,
-                    die, load_slots, read_csv, write_csv)
+from common import (BUILD, BUILD_CUES_CSV, CUE_DEFAULT_PRIORITY, CUE_DEFAULT_VOLUME, CUES_CSV, CUTS_CSV,
+                    DEFAULT_CATEGORIES, IMPORT_DIR, MANIFEST_CSV, MAPPING_CSV, MASTERS_DIR, REPO, WAVE_PROPS, die,
+                    load_slots, master_name, read_csv, write_csv)
 
 TRACKS_DIR = REPO / "tracks"
 NORMALIZED_DIR = BUILD / "normalized"
 AUDIO_EXTS = {".mp3", ".flac", ".wav", ".ogg", ".opus", ".m4a", ".aac", ".aif", ".aiff", ".wma"}
 MANIFEST_FIELDS = ["asset_path", "wav", "track", "category", "duration_sec", "output_lufs"] + WAVE_PROPS
+BUILD_CUE_FIELDS = ["cue_path", "category", "loops", "master", "sound_class", "submix", "priority", "volume",
+                    "waves"]
 
 TRIM_FILTER = ("silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.05,"
                "areverse,"
@@ -166,14 +179,15 @@ def load_mapping(slots, tracks):
     for s in slots:
         by_slot[s["name"]] = s["asset_path"]
         by_slot[s["asset_path"]] = s["asset_path"]
+    other = {k for s in load_slots() for k in (s["name"], s["asset_path"])} - set(by_slot)
     by_key = track_index(tracks)
     mapping = {}
     for row in read_csv(MAPPING_CSV):
         slot, track = (row.get("slot") or "").strip(), (row.get("track") or "").strip()
-        if not slot:
+        if not slot or slot in other:  # a slot of a category not in --categories
             continue
         if slot not in by_slot:
-            die(f"mapping.csv: unknown slot '{slot}' (not in data/mission_slots.csv or not in --categories)")
+            die(f"mapping.csv: unknown slot '{slot}' (not in data/mission_slots.csv)")
         if not track or track.lower() == VANILLA:
             mapping[by_slot[slot]] = VANILLA
             continue
@@ -260,10 +274,53 @@ def render_loop(src, dst, total, cut, end, slot_dur, fit, sample_rate):
     return probe_duration(dst), note
 
 
+def render_rotation(src, dst, cut, sample_rate):
+    """A wave of a rotation cue (--rotate): when it ends the cue picks another track, so it plays from the
+    drop to the natural end of the song. `end` from cuts.csv is a loop point and is not used. Trailing
+    silence is cut so the next track follows right away; a short fade covers clips that stop abruptly."""
+    fade_in = f",afade=t=in:d={FADE_IN}" if cut > 0 else ""
+    graph = (f"[0:a]atrim=start={cut},asetpts=PTS-STARTPTS{fade_in},"
+             "areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.2,"
+             f"afade=t=in:d={FADE_OUT},areverse[out]")
+    render(src, dst, graph, sample_rate)
+    return probe_duration(dst), f"{cut:.0f}s to end, rotation"
+
+
+def rotation_cues(rotate, slots):
+    """build/import/cues.csv rows: every vanilla cue of a rotated category (data/mission_cues.csv), to be
+    replaced by a copy of its master cue that plays all waves of the category."""
+    if not CUES_CSV.exists():
+        die(f"{CUES_CSV.relative_to(REPO)} not found - run tools/scan_slots.py first")
+    cues = read_csv(CUES_CSV)
+    rows = []
+    for cat in rotate:
+        cat_slots = [s for s in slots if s["category"] == cat]
+        cat_cues = [c for c in cues if c["category"] == cat]
+        if not cat_cues:
+            die(f"--rotate {cat}: no cues of this category in {CUES_CSV.name}")
+        played = {w for c in cat_cues for w in c["waves"].split()}
+        missing = [s["name"] for s in cat_slots if s["name"] not in played]
+        if missing:
+            die(f"--rotate {cat}: no cue in {CUES_CSV.name} plays {', '.join(missing)} - rescan with scan_slots.py")
+        volume = statistics.median(float(c["volume"] or CUE_DEFAULT_VOLUME) for c in cat_cues)
+        priority = statistics.median(float(c["priority"] or CUE_DEFAULT_PRIORITY) for c in cat_cues)
+        waves = " ".join(s["asset_path"] for s in cat_slots)
+        for c in cat_cues:
+            rows.append({"cue_path": c["cue_path"], "category": cat, "loops": c["loops"],
+                         "master": f"{MASTERS_DIR}/{master_name(cat, c['loops'] == 'true')}",
+                         "sound_class": c["sound_class"], "submix": c["submix"],
+                         "priority": f"{priority:g}", "volume": f"{volume:g}",
+                         "waves": waves})
+    return rows
+
+
 def build(args):
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         die("ffmpeg/ffprobe not found on PATH")
     categories = [c.strip() for c in args.categories.split(",") if c.strip()]
+    rotate = [c.strip() for c in args.rotate.split(",") if c.strip()]
+    if set(rotate) - set(categories):
+        die(f"--rotate {', '.join(sorted(set(rotate) - set(categories)))} not in --categories {args.categories}")
     slots = load_slots(categories)
     if not slots:
         die(f"no slots in categories {args.categories}")
@@ -293,6 +350,9 @@ def build(args):
     kept = [s["name"] for s in slots if assignment[s["asset_path"]] == VANILLA]
     if kept:
         print(f"kept vanilla (mapping.csv): {', '.join(kept)}")
+        kept_rotated = [s["name"] for s in slots if s["category"] in rotate and assignment[s["asset_path"]] == VANILLA]
+        if kept_rotated:
+            die(f"--rotate needs every slot of the category replaced; vanilla in mapping.csv: {', '.join(kept_rotated)}")
     slots = [s for s in slots if assignment[s["asset_path"]] != VANILLA]
 
     print(f"normalizing to {args.target_lufs} LUFS / {args.true_peak} dBTP, {args.sample_rate} Hz")
@@ -311,7 +371,9 @@ def build(args):
             die(f"cuts.csv: start {cut:g}s is past the end of {track.name} ({info['duration_sec']:.0f}s)")
         if end is not None and end <= cut + 10:
             die(f"cuts.csv: end {end:g}s must be well after start {cut:g}s for {track.name}")
-        if s.get("cue_loops") == "true" or (not s.get("cue_loops") and s["category"] == "pressure"):
+        if s["category"] in rotate:
+            duration, note = render_rotation(norm, wav, cut, args.sample_rate)
+        elif s.get("cue_loops") == "true" or (not s.get("cue_loops") and s["category"] == "pressure"):
             if end is None:
                 no_loop_end.append(track.name)
             duration, note = render_loop(norm, wav, info["duration_sec"], cut, end, slot_dur, args.fit_slots,
@@ -327,6 +389,9 @@ def build(args):
                      "track": track.name, "category": s["category"], "duration_sec": round(duration, 2),
                      "output_lufs": info["output_lufs"]})
     write_csv(MANIFEST_CSV, MANIFEST_FIELDS, rows)
+    cue_rows = rotation_cues(rotate, slots) if rotate else []
+    if cue_rows:
+        write_csv(BUILD_CUES_CSV, BUILD_CUE_FIELDS, cue_rows)
 
     print()
     print(f"{'category':<11}{'slot':<38}{'vanilla':>8}{'ours':>7}  {'fragment':<24}{'track'}")
@@ -347,6 +412,17 @@ def build(args):
     if no_loop_end:
         print(f"\nwarning: looping slots without an 'end' in cuts.csv wrap after the song's outro "
               f"(trailing silence trimmed): {', '.join(sorted(set(no_loop_end)))}")
+    if cue_rows:
+        print()
+        for cat in rotate:
+            mine = [c for c in cue_rows if c["category"] == cat]
+            loops = sum(1 for c in mine if c["loops"] == "true")
+            masters = sorted({c["master"].rsplit("/", 1)[1] for c in mine})
+            print(f"rotation {cat}: {len(mine)} cues ({loops} looping), {len(mine[0]['waves'].split())} waves each, "
+                  f"volume x{mine[0]['volume']}, masters {', '.join(masters)}")
+        if args.fit_slots:
+            print("note: --fit-slots does not apply to rotation waves (they play to the end of the song)")
+        print(f"cues to replace: {BUILD_CUES_CSV.relative_to(REPO)} (ue_cues.py)")
     print(f"\n{len(rows)} slots -> {IMPORT_DIR.relative_to(REPO)}/, manifest: {MANIFEST_CSV.relative_to(REPO)}")
 
 
@@ -366,6 +442,9 @@ def main():
     b.add_argument("--order", choices=["name", "shuffle"], default="name",
                    help="order of unmapped tracks for round-robin filling (default: by file name)")
     b.add_argument("--seed", type=int, default=1, help="seed for --order shuffle")
+    b.add_argument("--rotate", default="",
+                   help="categories whose cues play all their tracks in random order, e.g. swarm,ambient "
+                        "(default: none, one track per cue as in the vanilla game)")
     b.add_argument("--fit-slots", action="store_true",
                    help="render every slot at exactly its vanilla duration (use if the game cuts mission music there)")
     args = ap.parse_args()

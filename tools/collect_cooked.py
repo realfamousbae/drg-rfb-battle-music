@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Copy ONLY the cooked mission-music SoundWaves into a folder ready for packing.
+"""Copy ONLY the cooked mission-music SoundWaves (and, with prepare_tracks.py --rotate, the replaced Sound
+Cues from build/import/cues.csv) into a folder ready for packing.
 
     python tools/collect_cooked.py --cooked "<FSD project>/Saved/Cooked/WindowsNoEditor" --clean
     python tools/collect_cooked.py --cooked "<Package Project output>/WindowsNoEditor" --layout drgpacker --clean
 
 Keeping the pak to audio assets only is what lets the game auto-verify the mod,
-so everything that is not a slot from build/import/manifest.csv is left out.
+so everything that is not a slot from build/import/manifest.csv or a cue from build/import/cues.csv
+is left out (the master cues in /Game/_RFB stay in the project).
 
 Layouts:
   repak      pak/RFB_BattleMusic_P/FSD/Content/...  -> repak pack --version V11 pak/RFB_BattleMusic_P
@@ -15,7 +17,7 @@ import argparse
 import shutil
 from pathlib import Path
 
-from common import MANIFEST_CSV, REPO, die, read_csv
+from common import BUILD_CUES_CSV, CUES_DONE, MANIFEST_CSV, REPO, die, read_csv
 
 REQUIRED_EXTS = (".uasset", ".uexp")
 OPTIONAL_EXTS = (".ubulk", ".uptnl")
@@ -48,9 +50,13 @@ def main():
     dest_content = args.out / "FSD" / "Content" if args.layout == "repak" else args.out / "Content"
 
     rows = read_csv(MANIFEST_CSV)
+    cues = read_csv(BUILD_CUES_CSV) if BUILD_CUES_CSV.exists() else []
+    if cues and not CUES_DONE.exists():
+        die(f"{BUILD_CUES_CSV.relative_to(REPO)} lists cues to replace, but ue_cues.py has not finished: "
+            "the cook would pack the vanilla cues. Run it (build.ps1 without -SkipCues) and cook again.")
     files, missing = [], []
-    for row in rows:
-        rel = row["asset_path"][len("/Game/"):]
+    for path in [r["asset_path"] for r in rows] + [c["cue_path"] for c in cues]:
+        rel = path[len("/Game/"):]
         for ext in REQUIRED_EXTS + OPTIONAL_EXTS:
             src = content / (rel + ext)
             if src.exists():
@@ -77,7 +83,7 @@ def main():
         print("warning: Audio/SoundControl was cooked - add it to 'Directories to never cook'. "
               "It is not copied into the pak, but the setting keeps cooks clean.")
 
-    print(f"{len(rows)} SoundWaves, {copied} files, {total / 1024 / 1024:.1f} MiB -> {args.out}")
+    print(f"{len(rows)} SoundWaves, {len(cues)} SoundCues, {copied} files, {total / 1024 / 1024:.1f} MiB -> {args.out}")
     if args.layout == "repak":
         print(f"next: repak pack --version V11 \"{args.out}\"")
     else:

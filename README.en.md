@@ -45,6 +45,10 @@ What is known and what isn't yet:
   (135 s vs 226 s vanilla), Refinery pumping or the Ommoran in Escort. If it is cut, build with `-FitSlots`.
 - `data/mission_slots.csv` was scanned from the live 1.40 game pak (2026-10-25). Compared to the U38P10
   template, only the Core Stone rift slot was added.
+- The game picks **one cue per category for the whole mission**, so in 1.0.0 the swarm and the cave music
+  play one track each for the whole run. The rotation prototype (`-Rotate swarm,ambient`) puts copies of
+  master cues with a Random node over every track of the category in place of the vanilla cues:
+  [docs/rotation.md](docs/rotation.md) (Russian). Not tested in game yet.
 
 ## Layout
 
@@ -53,9 +57,11 @@ data/
   playlist.tsv         tracklist: artists, title, duration, YouTube link, clip trim
   cuts.csv             where each track starts (hook/drop) and where the fragment ends
   mission_slots.csv    every mission-music wave: category, cue, vanilla duration and flags
+  mission_cues.csv     every music cue: path, loops, SoundClass, submix, Priority, volume, waves
   mapping.csv          which track goes into which slot (example: mapping.example.csv)
 docs/
   mission-music.md     how the mission music system works
+  rotation.md          track rotation within a mission: master cues, build, in-game check
   tracklist.md         track-to-slot layout with reasons
 tools/
   scan_slots.py        waves and cues from the game pak (repak unpack) or the template's Audio.zip
@@ -63,8 +69,9 @@ tools/
   find_cuts.py         suggests start/end for cuts.csv from the loudness curve and tempo
   prepare_tracks.py    loudness, cuts, loops, per-slot layout -> build/import/
   ue_import.py         imports the WAVs into the UE project as SoundWaves with vanilla flags
-  collect_cooked.py    takes only the slot assets from the cook
-  build.ps1            everything in order: prepare -> import -> cook -> pak -> zip
+  ue_cues.py           rotation: copies of the master cues in place of the vanilla cues
+  collect_cooked.py    takes only the slot assets (and rotation cues) from the cook
+  build.ps1            everything in order: prepare -> import -> cues -> cook -> pak -> zip
 modio/
   description.md       mod.io page texts and settings
   logo.png             mod.io cover image
@@ -86,12 +93,14 @@ powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Project <template>\FSD
 
 Output: `dist\RFB_BattleMusic_P.pak` and `dist\RFB_BattleMusic.zip` for mod.io. Close the Unreal Editor
 before building. The script finds UE 4.27 through the Epic Games Launcher, or pass `-UERoot`. Resume from a
-later step with `-SkipPrepare`, `-SkipImport`, `-SkipCook`.
+later step with `-SkipPrepare`, `-SkipImport`, `-SkipCues`, `-SkipCook`.
 
 Options:
 
 - `-Categories swarm,pressure,extraction,boss`: which categories to replace; the rest keep the vanilla
   music. Default: every mission category, including `ambient`.
+- `-Rotate swarm,ambient`: in these categories every cue plays all tracks of the category in random order.
+  Needs master cues made once by hand in the project: [docs/rotation.md](docs/rotation.md).
 - `-FitSlots`: render every slot at exactly its vanilla length (if the game cuts music there).
 - `-Volume 1.5`: volume multiplier on every wave, if the music is quieter than vanilla in game.
 - `-TargetLufs -11`: loudness target. Vanilla exports can be measured with
@@ -122,7 +131,7 @@ a GitHub release `vX.Y.Z` with `RFB_BattleMusic-X.Y.Z.zip` and its SHA-256.
 ```
 repak unpack -i FSD/Content/Audio/Music -o <dir> "<DRG>\FSD\Content\Paks\FSD-WindowsNoEditor.pak"
 python tools/scan_slots.py <dir>\FSD\Content\Audio\Music
-git diff data/mission_slots.csv
+git diff data/mission_slots.csv data/mission_cues.csv
 ```
 
 If the waves and durations didn't change, there's no need to rebuild.

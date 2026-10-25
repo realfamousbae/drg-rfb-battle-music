@@ -8,16 +8,33 @@ DATA = REPO / "data"
 BUILD = REPO / "build"
 
 SLOTS_CSV = DATA / "mission_slots.csv"
+CUES_CSV = DATA / "mission_cues.csv"
 MAPPING_CSV = DATA / "mapping.csv"
 CUTS_CSV = DATA / "cuts.csv"
 IMPORT_DIR = BUILD / "import"
 MANIFEST_CSV = IMPORT_DIR / "manifest.csv"
+BUILD_CUES_CSV = IMPORT_DIR / "cues.csv"
+CUES_DONE = IMPORT_DIR / "cues.done"  # written by ue_cues.py once the cues in the project are replaced
+
+# Rotation (prepare_tracks.py --rotate): every cue of a category is replaced by a copy of a master cue that
+# plays all waves of that category in random order. The masters are made by hand once in the UE project
+# (docs/rotation.md); ue_cues.py checks them and copies them over the vanilla cue paths.
+MASTERS_DIR = "/Game/_RFB/Masters"
+
+
+def master_name(category, loops):
+    return f"RFB_{category}_{'loop' if loops else 'once'}"
 
 # Properties copied from the vanilla SoundWave so the replacement behaves the same in game.
 # Mission music waves carry no SoundClass/attenuation themselves (the Sound Cue does), but the
 # columns stay so a scan of a newer game build can still record them.
 WAVE_PROPS = ["sound_class", "attenuation", "volume", "compression_quality", "looping", "streaming"]
 SLOT_FIELDS = ["asset_path", "name", "category", "cue", "cue_loops", "duration_sec", "shared_with"] + WAVE_PROPS
+# One row per vanilla music cue (data/mission_cues.csv): what a replacement cue must keep. Empty priority /
+# volume = not serialized in the vanilla asset, i.e. the engine default below.
+CUE_FIELDS = ["cue_path", "name", "category", "loops", "sound_class", "submix", "priority", "volume", "waves"]
+CUE_DEFAULT_PRIORITY = 1.0   # USoundBase
+CUE_DEFAULT_VOLUME = 0.75    # USoundCue::VolumeMultiplier
 
 # Where each vanilla wave is played. The folder of the wave decides the category; a few waves are
 # special-cased because the game reuses them (see docs/mission-music.md).
@@ -60,6 +77,8 @@ CATEGORY_BY_NAME = {
 }
 # wave -> other cue that also plays it
 SHARED_WITH = {"St_Deep_Master_1": "LoadingScreenMusic_Cue (loading)"}
+# cues whose category is not the category of the wave they play
+CATEGORY_BY_CUE = {"LoadingScreenMusic_Cue": "loading"}
 
 # Categories a default build replaces. The rest keep the vanilla music unless asked for.
 DEFAULT_CATEGORIES = ["swarm", "pressure", "extraction", "boss", "machine", "endscreen", "deepdive", "ambient"]

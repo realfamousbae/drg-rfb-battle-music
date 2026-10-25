@@ -12,8 +12,11 @@ or the Music folder from Audio.zip of DRG-Modding/Audio-Modding-Template (all-as
 properties are the same, but the release may lag behind the game). FModel .json exports work too.
 
 The raw scan reads Duration, Volume, bLooping, bStreaming of each wave and finds which cue references
-it (by name table). SoundClass lives on the cue, not on the wave, so it is recorded per cue for
+it (by name table). SoundClass lives on the cue, not on the wave, so it is recorded per wave for
 information only.
+
+It also writes data/mission_cues.csv: one row per cue with its path, SoundClass, submix, Priority and
+VolumeMultiplier - what a replacement cue (prepare_tracks.py --rotate, ue_cues.py) has to keep.
 """
 import argparse
 import json
@@ -21,7 +24,8 @@ import re
 import struct
 from pathlib import Path
 
-from common import REPO, SHARED_WITH, SLOTS_CSV, SLOT_FIELDS, category_of, die, write_csv
+from common import (CATEGORY_BY_CUE, CUE_FIELDS, CUES_CSV, REPO, SHARED_WITH, SLOTS_CSV, SLOT_FIELDS, category_of,
+                    die, write_csv)
 
 MIN_DURATION = 30.0
 
@@ -66,30 +70,42 @@ def uasset_names(data):
     return names
 
 
+def export_data(file):
+    """Serialized exports: the .uexp of a cooked package, the .uasset itself for an editor package."""
+    uexp = file.with_suffix(".uexp")
+    return uexp.read_bytes() if uexp.exists() else file.read_bytes()
+
+
+def find_tag(names, data, prop, typ, size):
+    if prop not in names or typ not in names:
+        return -1, b""
+    pat = struct.pack("<iiiiii", names.index(prop), 0, names.index(typ), 0, size, 0)
+    return data.find(pat), pat
+
+
+def float_tag(names, data, prop):
+    """First FloatProperty tag named prop, or None when it is not serialized (= class default)."""
+    i, pat = find_tag(names, data, prop, "FloatProperty", 4)
+    return struct.unpack_from("<f", data, i + len(pat) + 1)[0] if i >= 0 else None  # +1: HasPropertyGuid
+
+
 def wave_from_uasset(file):
     """Tagged SoundWave properties from a raw .uasset/.uexp pair. Properties equal to the class default
     are not serialized, so a missing bool means false."""
     names = uasset_names(file.read_bytes())
     if "SoundWave" not in names:
         return None
-    uexp = file.with_suffix(".uexp").read_bytes()
-
-    def tag(prop, typ, size):
-        if prop not in names or typ not in names:
-            return -1, b""
-        pat = struct.pack("<iiiiii", names.index(prop), 0, names.index(typ), 0, size, 0)
-        return uexp.find(pat), pat
+    uexp = export_data(file)
 
     def float_prop(prop):
-        i, pat = tag(prop, "FloatProperty", 4)
-        return struct.unpack_from("<f", uexp, i + len(pat) + 1)[0] if i >= 0 else None  # +1: HasPropertyGuid
+        return float_tag(names, uexp, prop)
 
     def int_prop(prop):
-        i, pat = tag(prop, "IntProperty", 4)
+        i, pat = find_tag(names, uexp, prop, "IntProperty", 4)
         return struct.unpack_from("<i", uexp, i + len(pat) + 1)[0] if i >= 0 else None
 
     def bool_prop(prop):
-        i, pat = tag(prop, "BoolProperty", 0)
+        i, pat = find_tag(names, uexp, prop, "BoolProperty", 0)
         return "true" if i >= 0 and uexp[i + len(pat)] else "false"
 
     duration, volume, quality = float_prop("Duration"), float_prop("Volume"), int_prop("CompressionQuality")
@@ -139,7 +155,7 @@ def wave_from_json(file):
 
 
 def cue_refs(file):
-    """(wave names referenced, SoundClass name) of a cooked SoundCue, from its name table."""
+    """(name table, SoundClass name, loops, cue properties) of a SoundCue package."""
     try:
         names = uasset_names(file.read_bytes())
     except (OSError, struct.error, UnicodeDecodeError):
@@ -148,9 +164,18 @@ def cue_refs(file):
         return None
     sound_class = next((n for n in names if n.startswith("Music_") and "/" not in n), "")
     # bLooping is only serialized when some node sets it (defaults are skipped), so its presence in the
-    # name table means a looping Wave Player (or Looping node): the game plays the wave round and round
-    # until it stops the cue.
-    return names, sound_class, "bLooping" in names
+    # name table means a looping Wave Player: the game plays the wave round and round until it stops the
+    # cue. A Looping node (bLoopIndefinitely on by default) shows up as its class name.
+    loops = "bLooping" in names or "SoundNodeLooping" in names
+    data = export_data(file)
+    priority, volume = float_tag(names, data, "Priority"), float_tag(names, data, "VolumeMultiplier")
+    props = {
+        "sound_class": next((n for n in names if n.startswith("/Game/Audio/SoundControl/SoundClasses/")), ""),
+        "submix": next((n for n in names if n.startswith("/Game/Audio/SoundControl/SubMixes/")), ""),
+        "priority": f"{priority:g}" if priority is not None else "",
+        "volume": f"{volume:g}" if volume is not None else "",
+    }
+    return names, sound_class, loops, props
 
 
 def main():
@@ -159,6 +184,7 @@ def main():
     ap.add_argument("--min-duration", type=float, default=MIN_DURATION,
                     help=f"skip SoundWaves shorter than this many seconds (default {MIN_DURATION:g})")
     ap.add_argument("--out", type=Path, default=SLOTS_CSV)
+    ap.add_argument("--cues-out", type=Path, default=CUES_CSV)
     args = ap.parse_args()
     if not args.music.is_dir():
         die(f"not a directory: {args.music}")
@@ -204,16 +230,25 @@ def main():
         m = re.fullmatch(r"(.*)_([1-9]\d*)", n)
         return m.group(1) if m else n
 
-    for cue_name, cue_path, names, sound_class, loops in cues:
+    cue_rows = []
+    for cue_name, cue_path, names, sound_class, loops, props in cues:
+        played = []
         for w in waves.values():
             if w["name"] in names or fname(w["name"]) in names:
                 w["cue"] = (w["cue"] + " " if w["cue"] else "") + cue_name
                 w["cue_loops"] = "true" if loops or w["cue_loops"] == "true" else "false"
                 if sound_class and not w["sound_class"]:
                     w["sound_class"] = sound_class
+                played.append(w)
+        if played:
+            category = CATEGORY_BY_CUE.get(cue_name, played[0]["category"])
+            cue_rows.append({"cue_path": cue_path, "name": cue_name, "category": category,
+                             "loops": "true" if loops else "false", **props,
+                             "waves": " ".join(w["name"] for w in played)})
 
     rows = sorted(waves.values(), key=lambda s: (s["category"], -float(s["duration_sec"] or 0)))
     write_csv(args.out, SLOT_FIELDS, rows)
+    write_csv(args.cues_out, CUE_FIELDS, sorted(cue_rows, key=lambda c: (c["category"], c["cue_path"])))
 
     by_cat = {}
     for r in rows:
@@ -228,11 +263,12 @@ def main():
         print(f"note: no cue found for {', '.join(orphans)} (unused, or played by a blueprint)")
     if skipped:
         print(f"skipped {len(skipped)} short SoundWaves (< {args.min_duration:g}s)")
-    try:
-        shown = args.out.resolve().relative_to(REPO)
-    except ValueError:
-        shown = args.out
-    print(f"wrote {shown}")
+    for out in (args.out, args.cues_out):
+        try:
+            shown = out.resolve().relative_to(REPO)
+        except ValueError:
+            shown = out
+        print(f"wrote {shown}")
 
 
 if __name__ == "__main__":

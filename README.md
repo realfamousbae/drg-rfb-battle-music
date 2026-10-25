@@ -42,6 +42,9 @@
   Refining или Ommoran в Escort. Если обрезает, собирать с `-FitSlots`.
 - `data/mission_slots.csv` снят с живого пака игры 1.40 (25.10.2026). По сравнению с шаблоном U38P10
   добавился слот разлома Core Stone, остальное совпало.
+- Игра выбирает **один кью на категорию на всю миссию**, поэтому в 1.0.0 рой и фон пещеры весь заход играют
+  по одному треку. Прототип ротации (`-Rotate swarm,ambient`) ставит вместо кью копии кью-образцов с
+  Random по всем трекам категории: [docs/rotation.md](docs/rotation.md). В игре ещё не проверен.
 
 ## Структура
 
@@ -50,9 +53,11 @@ data/
   playlist.tsv         треклист: исполнители, название, длительность, ссылка на YouTube, обрезка клипа
   cuts.csv             с какой секунды начинается каждый трек (хук/дроп) и где кончается фрагмент
   mission_slots.csv    все волны музыки миссий: категория, кью, ванильные длительность и флаги
+  mission_cues.csv     все кью музыки: путь, петля, SoundClass, сабмикс, Priority, громкость, волны
   mapping.csv          какой трек в какой слот (образец: mapping.example.csv)
 docs/
   mission-music.md     разбор музыкальной системы миссий
+  rotation.md          ротация треков внутри миссии: кью-образцы, сборка, проверка в игре
   tracklist.md         раскладка треков по слотам с обоснованием
 tools/
   scan_slots.py        список волн и кью из пака игры (repak unpack) или из Audio.zip шаблона
@@ -60,8 +65,9 @@ tools/
   find_cuts.py         предлагает start/end для cuts.csv по кривой громкости и темпу
   prepare_tracks.py    громкость, срезы, петли, раскладка по слотам → build/import/
   ue_import.py         импорт WAV в UE-проект как SoundWave с ванильными флагами
-  collect_cooked.py    берёт из cook только ассеты слотов
-  build.ps1            всё по порядку: подготовка → импорт → cook → пак → zip
+  ue_cues.py           ротация: копии кью-образцов на места ванильных кью
+  collect_cooked.py    берёт из cook только ассеты слотов (и кью ротации)
+  build.ps1            всё по порядку: подготовка → импорт → кью → cook → пак → zip
 modio/
   description.md       тексты и настройки страницы мода на mod.io
   logo.png             обложка мода на mod.io
@@ -83,12 +89,14 @@ powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Project <template>\FSD
 
 Результат: `dist\RFB_BattleMusic_P.pak` и `dist\RFB_BattleMusic.zip` для mod.io. Редактор UE при сборке
 должен быть закрыт. Путь к UE 4.27 скрипт находит через Epic Launcher, вручную: `-UERoot`. Продолжить с
-середины: `-SkipPrepare`, `-SkipImport`, `-SkipCook`.
+середины: `-SkipPrepare`, `-SkipImport`, `-SkipCues`, `-SkipCook`.
 
 Параметры:
 
 - `-Categories swarm,pressure,extraction,boss` — какие категории заменять; остальные остаются ванильными.
   По умолчанию все категории миссий, включая `ambient`.
+- `-Rotate swarm,ambient` — в этих категориях каждый кью играет все треки категории в случайном порядке.
+  Нужны кью-образцы, один раз собранные руками в проекте: [docs/rotation.md](docs/rotation.md).
 - `-FitSlots` — рендерить каждый слот ровно в ванильную длину (если игра обрезает по ней).
 - `-Volume 1.5` — множитель громкости всех волн, если в игре музыка тише ванили.
 - `-TargetLufs -11` — целевая громкость. Ванильные экспорты можно померить:
@@ -119,7 +127,7 @@ powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Project <template>\FSD
 ```
 repak unpack -i FSD/Content/Audio/Music -o <dir> "<DRG>\FSD\Content\Paks\FSD-WindowsNoEditor.pak"
 python tools/scan_slots.py <dir>\FSD\Content\Audio\Music
-git diff data/mission_slots.csv
+git diff data/mission_slots.csv data/mission_cues.csv
 ```
 
 Если волны и длительности не изменились, пересобирать не нужно.

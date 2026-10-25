@@ -1,12 +1,18 @@
 <#
 .SYNOPSIS
-  Windows PC: prepare tracks -> import into UE 4.27 -> cook -> collect -> pack -> zip for mod.io.
+  Windows PC: prepare tracks -> import into UE 4.27 -> rotation cues -> cook -> collect -> pack -> zip for mod.io.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Project C:\Mods\Audio-Modding-Template\FSD.uproject
 
   Close the Unreal Editor first: the import and cook steps run it headless.
-  Use -SkipPrepare / -SkipImport / -SkipCook to resume from a later step.
+  Use -SkipPrepare / -SkipImport / -SkipCues / -SkipCook to resume from a later step.
+
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Project C:\Mods\Audio-Modding-Template\FSD.uproject -Rotate swarm,ambient
+
+  Swarm and cave music play all their tracks in random order within a mission. Needs the master cues made
+  once by hand in the project (docs\rotation.md).
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Project,
@@ -19,10 +25,12 @@ param(
     [switch]$Shuffle,
     [switch]$FitSlots,
     [string]$Categories = "",
+    [string]$Rotate = "",
     [double]$Volume = 0,
     [int]$Seed = 1,
     [switch]$SkipPrepare,
     [switch]$SkipImport,
+    [switch]$SkipCues,
     [switch]$SkipCook
 )
 $ErrorActionPreference = "Stop"
@@ -56,6 +64,7 @@ try {
         if ($Shuffle) { $prep += @("--order", "shuffle", "--seed", "$Seed") }
         if ($FitSlots) { $prep += "--fit-slots" }
         if ($Categories) { $prep += @("--categories", $Categories) }
+        if ($Rotate) { $prep += @("--rotate", $Rotate) }
         & $Python @prep; Check "prepare_tracks.py"
     }
 
@@ -65,6 +74,14 @@ try {
         $env:RFB_VOLUME = $(if ($Volume -gt 0) { "$Volume" } else { "" })
         & $Editor $Project -run=pythonscript "-script=$Repo\tools\ue_import.py" -unattended -nop4 -nosplash
         Check "ue_import.py"
+    }
+
+    $CuesCsv = Join-Path $Repo "build\import\cues.csv"
+    if (-not $SkipCues -and (Test-Path $CuesCsv)) {
+        Step "Rotation cues"
+        $env:RFB_REPO = $Repo
+        & $Editor $Project -run=pythonscript "-script=$Repo\tools\ue_cues.py" -unattended -nop4 -nosplash
+        Check "ue_cues.py"
     }
 
     if (-not $SkipCook) {
