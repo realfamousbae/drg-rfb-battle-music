@@ -1,0 +1,9 @@
+slot,track
+# Copy to data/mapping.csv: which track plays in which slot. Slots without a row are filled round-robin
+# from the tracks not mentioned here, so list every slot to control them all.
+# slot  = wave name (or full /Game/... path) from data/mission_slots.csv
+# track = NN row number from data/playlist.tsv (or a file name inside tracks/)
+#         empty or "vanilla" = keep the game's own music in this slot
+# St_Tick_Master_1,06
+# St_Alien_Master_1,vanilla
+# /Game/Audio/Music/Boss/AudioFiles/St_Nova_Master_1,14 Lida, CMH, ЮГ 404 - Паркур.wav

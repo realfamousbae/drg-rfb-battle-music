@@ -1,0 +1,52 @@
+slot,track
+# slot = wave name from data/mission_slots.csv; track = NN row of data/playlist.tsv.
+# Every mission slot is listed so none is filled round-robin. Layout and reasons: docs/tracklist.md.
+# swarm (announced wave, single play)
+St_Tick_Master_1,01
+St_Boss_Master_1,02
+ST_NotTheBees_Master_3,03
+ST_MountainBlaster_Master_3,04
+St_Hole_Master_1,05
+ST_MorkiteIsADancer_Master_3,06
+ST_SpaceFire_Master_3,07
+St_HoldMyBeard_Master_1,08
+St_Wave_Master_1,09
+ST_DOTSA_Master_3,10
+# pressure (looping)
+PetrifiedFury_Looping_1,11
+Theyre_Here_Looping_1,12
+A_Distant_Terror_Looping_01,13
+MorkiteIsADancer_Looping_1,14
+SpaceFire_Looping_1,15
+MountainBlaster_Looping_1,16
+Dance_Of_The_Dreadnaught_Looping_01,17
+# extraction
+St_SW_Master_1,18
+ST_OperasFascination_Master_3,19
+ST_SabotageOfMolly_Master_3,20
+St_RobotGetaway_Master_1,21
+St_Marching_Master_1,22
+ST_WhereTheyReallyDare_Master_3,23
+# boss (dreadnought)
+ST_InterstellarNightmares_Master_3,24
+St_Nova_Master_1,25
+St_Stalker_Master_1,26
+# ambient (cave) + loading screen via St_Deep_Master_1
+St_Alien_Master_1,27
+St_Crawl_Master_1,28
+St_ST_Master_1,29
+A_Quiet_Tomb_ST_Master_1,30
+ST_AxeRunner_Master_3,31
+St_Carp_Master_1,32
+St_Slow_Master_1,33
+St_Horror_Master_1,34
+St_Pod_Master_1,35
+St_Deep_Master_1,36
+ST_ValleyOfDeath_Master_3,37
+ST_LOTD_Master_3,38
+ST_Cold_Master_3,39
+St_Clutch_Master_1,40
+# machine event, end screen, deep dive in-between
+ST_GameEvent_Master_1,41
+St_Action_Master_1,42
+ST_Where_They_Really_DareDLoop_1,43

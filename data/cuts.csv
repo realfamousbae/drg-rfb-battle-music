@@ -1,0 +1,49 @@
+track,start,end,note
+# start = second where the fragment begins (hook/drop). Every slot plays the track from here; looping slots
+# also use the seconds right before it to lead back into the drop at the loop point.
+# end   = where the fragment stops (looping slots: where the loop wraps, snapped to a bar line); empty = whole track.
+# Sources: 'old jukebox cut' = the start used for the same YouTube file in drg-rfb-jukebox-music; Фотки fragments
+# follow docs/tracklist.md; 'auto' = tools/find_cuts.py from the loudness curve. All to be checked by ear.
+01,65,,ЧСВ (old jukebox cut); one-shot cue
+02,42,,RAVE MODE (old jukebox cut); one-shot cue
+03,24,151.41,BIOHAZARD (bass +16 dB; auto, check); loop end auto (before outro); 126.2 bpm, end 153 -> 151.41
+04,11,119.04,KILL ME MAYBE (bass +12 dB; auto, check); loop end auto (before outro); 120.0 bpm, end 120 -> 119.04
+05,9,,Прицел (bass +17 dB; auto, check)
+06,0,160.36,ТРЯСИ (old jukebox cut); loop end auto (before outro); 112.2 bpm, end 162 -> 160.36
+07,43,127,Фотки: swarm, drop 1 -> end of drop 2, wraps to the drop; 120.0 bpm, on a bar line
+08,23,,гетто район (bass +14 dB; auto, check)
+09,15,,BDSM (bass +4 dB; auto, check)
+10,12,120.02,Танцуй или умри (old jukebox cut); loop end auto (before outro); 80.0 bpm, end 121 -> 120.02
+11,9,152.39,Сейчас или никогда: drop -> before outro; 92.1 bpm, end 153 -> 152.39
+12,0,125.91,СТИКЕР (old jukebox cut): whole song before outro; 171.6 bpm, end 126.72 -> 125.91
+13,65,138.31,Always (old jukebox cut): drop -> before outro; 124.4 bpm, end 139 -> 138.31
+14,41,122.84,Танцуй, комсомолка (old jukebox cut): drop -> before outro; 170.1 bpm, end 123 -> 122.84
+15,43,85,Фотки: chorus 43-63 + verse 64-84, wraps to the drop; 120.0 bpm, on a bar line
+16,15,75,KUVALDA: drop -> before the breakdown at 75; 132.0 bpm, on a bar line
+17,11,136.04,milf money: drop -> before outro; 170.8 bpm, on a bar line
+18,34,272.09,Паркур (old jukebox cut); loop end auto (before outro); 82.7 bpm, end 274 -> 272.09
+19,12,162.04,Евробит (old jukebox cut); loop end auto (before outro); 155.2 bpm, on a bar line
+20,7,121.28,ЛАДА ТУРБО СПЕЙС (bass +7 dB; auto, check); loop end auto (before outro); 140.7 bpm, end 122 -> 121.28
+21,26,165.13,ДОМОЙ (bass +19 dB; auto, check); loop end auto (before outro); 100.0 bpm, end 166 -> 165.13
+22,37,120.14,Лида навсегда (old jukebox cut); loud to the very end, loop before the trailing silence; 89.5 bpm, end 121.5 -> 120.14
+23,64,126,Фотки: extraction, verse 2 + breakdown + final chorus, wraps to verse 2; 120.0 bpm, end 127 -> 126
+24,64,179.02,Девочка снюс (old jukebox cut); loop end auto (before outro); 121.0 bpm, on a bar line
+25,0,156.56,Mortal Kombat: full energy from the start; loop end auto (before outro); 121.1 bpm, end 157 -> 156.56
+26,85,127,Фотки: dreadnought, breakdown into drop 2, wraps to the breakdown; 120.0 bpm, on a bar line
+27,0,297.45,Иголка: ambient, whole song from the start; loop end auto (before outro); 121.0 bpm, end 299 -> 297.45
+28,0,258.86,Схожу от тебя с ума: ambient, whole song from the start; loop end auto (before outro); 126.1 bpm, end 259 -> 258.86
+29,0,221.28,Не грусти покури отпустит: ambient, whole song from the start; loop end auto (before outro); 134.5 bpm, end 222 -> 221.28
+30,0,164.59,Одинокими: ambient, whole song from the start; loop end auto (before outro); 91.9 bpm, end 166 -> 164.59
+31,0,242.39,Звездопад: ambient, whole song from the start; loop end auto (before outro); 119.8 bpm, end 243 -> 242.39
+32,0,203.41,Послевкусие виски: ambient, whole song from the start; loop end auto (before outro); 82.6 bpm, end 205 -> 203.41
+33,0,117.83,Печальная: ambient, whole song from the start; loop end auto (before outro); 87.6 bpm, end 120 -> 117.83
+34,0,164.72,Засыпаю: ambient, whole song from the start; loop end auto (before outro); 80.1 bpm, end 167 -> 164.72
+35,0,191.85,Медляк: ambient, whole song from the start; loop end auto (before outro); 100.1 bpm, end 194 -> 191.85
+36,0,151.99,Грустный реп: ambient, whole song from the start; loop end auto (before outro); 172.1 bpm, end 153 -> 151.99
+37,0,81.83,Рок звезда должна умереть: ambient, whole song from the start; loop end auto (before outro); 105.6 bpm, end 82 -> 81.83
+38,0,220.75,Анапа: ambient, whole song from the start; loop end auto (before outro); 82.6 bpm, end 221 -> 220.75
+39,0,105.18,так похуй: ambient, whole song from the start; loop end auto (before outro); 159.7 bpm, end 106 -> 105.18
+40,0,119.58,Дождь: ambient, whole song from the start; loud to the very end, loop before the trailing silence; 134.5 bpm, end 119.5 -> 119.58
+41,16,123.04,УБЕЙ (bass +7 dB; auto, check); loop end auto (before outro); 125.6 bpm, end 124 -> 123.04
+42,37,,Я люблю бухать (old jukebox cut); one-shot cue
+43,43,95,Фотки: Deep Dive screen, chorus + half a verse (52 s); 120.0 bpm, on a bar line
