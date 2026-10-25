@@ -40,9 +40,9 @@ What is known and what isn't yet:
 - Almost every mission cue **loops its wave** until the game stops the cue: ambient, boss, extraction,
   Machine Event, Deep Dive and half of the swarm cues. Only the statistics screen and five swarm cues play
   once. So looping slots get a seamless loop from the drop to the `end` point in `cuts.csv`.
-- **Not verified yet** whether the game cuts mission music at the vanilla duration, as it does for the
-  jukebox. Test in game: replace one swarm wave with a track clearly longer than vanilla. If it is cut, build
-  with `-FitSlots`.
+- **Not verified in game yet**: whether the game cuts mission music at the vanilla duration, as it does for
+  the jukebox, and whether the loops wrap without a gap. To check: «ЧСВ» in the `St_Tick_Master_1` swarm
+  (135 s vs 226 s vanilla), Refinery pumping or the Ommoran in Escort. If it is cut, build with `-FitSlots`.
 - `data/mission_slots.csv` was scanned from the live 1.40 game pak (2026-10-25). Compared to the U38P10
   template, only the Core Stone rift slot was added.
 
@@ -56,7 +56,6 @@ data/
   mapping.csv          which track goes into which slot (example: mapping.example.csv)
 docs/
   mission-music.md     how the mission music system works
-  windows-test.md      build and in-game test checklist on Windows
   tracklist.md         track-to-slot layout with reasons
 tools/
   scan_slots.py        waves and cues from the game pak (repak unpack) or the template's Audio.zip
@@ -68,8 +67,7 @@ tools/
   build.ps1            everything in order: prepare -> import -> cook -> pak -> zip
 modio/
   description.md       mod.io page texts and settings
-  cover-brief.md       cover art brief
-  UPLOAD.md            publishing and update steps
+  logo.png             mod.io cover image
 tracks/                audio, not stored in git
 CHANGELOG.md           version history
 ```
@@ -99,7 +97,11 @@ Options:
 - `-TargetLufs -11`: loudness target. Vanilla exports can be measured with
   `python tools/prepare_tracks.py measure <files>`.
 
-For local testing, install the `.pak` with [mint](https://github.com/trumank/mint).
+For local testing, install the `.pak` with [mint](https://github.com/trumank/mint). Remove that test copy
+before playing with the mod.io version, or the music ends up in two paks.
+
+New version: an entry in `CHANGELOG.md`, the zip uploaded to the same mod on mod.io (Files → Upload file) and
+a GitHub release `vX.Y.Z` with `RFB_BattleMusic-X.Y.Z.zip` and its SHA-256.
 
 ### Tracks
 

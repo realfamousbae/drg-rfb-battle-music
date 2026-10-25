@@ -9,7 +9,7 @@
 | Tags | `Audio` (no `[AimedFor...]`) |
 | Game Version | the one the pak was built and tested on (1.40, Steam build 26107973, for v1.0.0) |
 | Required | `Optional`: client-side, other players don't need it |
-| Logo | `modio/logo.png`, 16:9, at least 512×288 (brief: `modio/cover-brief.md`) |
+| Logo | `modio/logo.png`, 16:9, at least 512×288 |
 | File | `dist/RFB_BattleMusic.zip` |
 
 ## Summary
