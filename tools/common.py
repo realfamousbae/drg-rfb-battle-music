@@ -25,6 +25,12 @@ MASTERS_DIR = "/Game/_RFB/Masters"
 def master_name(category, loops):
     return f"RFB_{category}_{'loop' if loops else 'once'}"
 
+
+# Every other looping cue the mod replaces plays one wave: a copy of this master (Wave Player, looping ->
+# Enveloper with a 0 -> 1 volume curve over 6 s -> Output) fades it in once, which a rendered fade cannot do
+# for a wave the cue loops.
+SINGLE_LOOP_MASTER = "RFB_single_loop"
+
 # Properties copied from the vanilla SoundWave so the replacement behaves the same in game.
 # Mission music waves carry no SoundClass/attenuation themselves (the Sound Cue does), but the
 # columns stay so a scan of a newer game build can still record them.
@@ -80,9 +86,22 @@ SHARED_WITH = {"St_Deep_Master_1": "LoadingScreenMusic_Cue (loading)"}
 # cues whose category is not the category of the wave they play
 CATEGORY_BY_CUE = {"LoadingScreenMusic_Cue": "loading"}
 
+# Slots of the mod's own waves, not in the game. The loading screen shares St_Deep_Master_1 with a cave track;
+# to give it a track of its own, LoadingScreenMusic_Cue is replaced (ue_cues.py) by a copy of
+# SINGLE_LOOP_MASTER that plays this wave instead.
+LOADING_WAVE = "/Game/_RFB/Loading/RFB_LoadingScreen_Master"
+EXTRA_SLOTS = [
+    {"asset_path": LOADING_WAVE, "name": LOADING_WAVE.rsplit("/", 1)[1], "category": "loading",
+     "cue": "LoadingScreenMusic_Cue", "cue_loops": "true", "duration_sec": "", "shared_with": "",
+     "sound_class": "", "attenuation": "", "volume": "", "compression_quality": "", "looping": "false",
+     "streaming": "true"},
+]
+
 # Categories a default build replaces. The rest keep the vanilla music unless asked for.
-DEFAULT_CATEGORIES = ["swarm", "pressure", "extraction", "boss", "machine", "endscreen", "deepdive", "ambient"]
-MISSION_CATEGORIES = ["ambient", "swarm", "pressure", "extraction", "boss", "machine", "endscreen", "deepdive"]
+DEFAULT_CATEGORIES = ["swarm", "pressure", "extraction", "boss", "machine", "endscreen", "deepdive", "ambient",
+                      "loading"]
+MISSION_CATEGORIES = ["ambient", "swarm", "pressure", "extraction", "boss", "machine", "endscreen", "deepdive",
+                      "loading"]
 
 
 def die(msg):
@@ -122,6 +141,7 @@ def load_slots(categories=None):
     slots = read_csv(SLOTS_CSV)
     if not slots:
         die(f"{SLOTS_CSV.relative_to(REPO)} is empty")
+    slots += [dict(s) for s in EXTRA_SLOTS]
     names = [s["asset_path"] for s in slots]
     dupes = {n for n in names if names.count(n) > 1}
     if dupes:

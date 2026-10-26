@@ -46,9 +46,10 @@ What is known and what isn't yet:
 - `data/mission_slots.csv` was scanned from the live 1.40 game pak (2026-10-25). Compared to the U38P10
   template, only the Core Stone rift slot was added.
 - The game picks **one cue per category for the whole mission**, so in 1.0.0 the swarm and the cave music
-  play one track each for the whole run. The rotation prototype (`-Rotate swarm,ambient`) puts copies of
-  master cues with a Random node over every track of the category in place of the vanilla cues:
-  [docs/rotation.md](docs/rotation.md) (Russian). Not tested in game yet.
+  play one track each for the whole run. Since 1.1.0 the release is built with the rotation
+  (`-Rotate swarm,ambient`): copies of master cues with a Random node over every track of the category
+  replace the vanilla cues, and the other looping cues get a fade-in: [docs/rotation.md](docs/rotation.md)
+  (Russian). Tested in game.
 
 ## Layout
 

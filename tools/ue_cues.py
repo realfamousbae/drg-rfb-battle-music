@@ -9,11 +9,15 @@ Runs inside Unreal Editor 4.27 like ue_import.py, after it:
 UE 4.27 Python cannot wire Sound Cue nodes, so the masters are made by hand once (docs/rotation.md):
   RFB_<category>_once   Random -> one Wave Player per wave -> Output
   RFB_<category>_loop   Looping -> Random -> one Wave Player per wave -> Output
+  RFB_single_loop       Wave Player -> Enveloper (volume 0 -> 1 over 6 s) -> Output, for every other looping
+                        cue (one wave each; the script makes the Wave Player loop and points it at the wave)
 in /Game/_RFB/Masters (or anywhere in the project under that name). The script checks each master, points its
 Wave Players at the category's waves if they play other ones, turns on Randomize Without Replacement and
 turns off Wave Player looping. Then for every cue path it deletes the vanilla cue (the all-assets template
-has them), duplicates the master there and sets SoundClass, submix, Priority and VolumeMultiplier from
-cues.csv, plus bExcludeFromRandomNodeBranchCulling so the engine never prunes the Random node to one branch.
+has them), duplicates the master there, shifts the order of its waves by the cue's place in the category
+(so the copies do not all start from the same track) and sets SoundClass, submix, Priority and
+VolumeMultiplier from cues.csv, plus bExcludeFromRandomNodeBranchCulling so the engine never prunes the Random
+node to one branch.
 RFB_DRY_RUN=1 only checks the masters and prints what would change.
 """
 import csv
@@ -48,6 +52,11 @@ def set_prop(obj, name, value):
     except Exception as e:  # property names differ slightly between engine versions
         warn("{}: could not set {}: {}".format(obj.get_name(), name, e))
         return False
+
+
+# Sound nodes are not exposed to Python as their own types: their properties are only reachable by the
+# C++ names (checked in UE 4.27). ChildNodes is protected and cannot be read at all.
+WAVE_PROP = "SoundWaveAssetPtr"
 
 
 def asset_path(obj):
@@ -87,28 +96,37 @@ def nodes_of(cue):
 
 
 def wave_of(player):
-    for name in ("sound_wave_asset_ptr", "sound_wave"):
-        try:
-            return asset_path(player.get_editor_property(name))
-        except Exception:
-            continue
-    return None
+    try:
+        return asset_path(player.get_editor_property(WAVE_PROP))
+    except Exception:
+        return None
 
 
 def set_wave(player, wave):
-    for name in ("sound_wave_asset_ptr", "sound_wave"):
-        try:
-            player.set_editor_property(name, wave)
-            return True
-        except Exception:
-            continue
-    warn("{}: could not set its Sound Wave".format(player.get_name()))
-    return False
+    return set_prop(player, WAVE_PROP, wave)
+
+
+def shift_waves(cue, waves, shift):
+    """Rotate which wave each Wave Player of a fresh master copy plays by `shift` places. The Random node picks
+    by index with rand() of the audio thread, which is never seeded on Windows, so every game launch tends to
+    pick the same indexes; the game picks the cue itself, so a different order per copy decorrelates them."""
+    players = sorted(nodes_of(cue).get("SoundNodeWavePlayer", []), key=lambda p: p.get_name())
+    by_path = {w: ASSETS.load_asset(w) for w in waves}
+    order = sorted(waves)
+    for i, player in enumerate(players):
+        set_wave(player, by_path[order[(i + shift) % len(order)]])
+    return [order[(i + shift) % len(order)].rsplit("/", 1)[-1] for i in range(len(players))]
 
 
 def check_master(path, loops, waves):
     """Problems with a master (empty list = usable); fixes what a script can fix unless DRY_RUN."""
-    kind = "Looping -> Random -> Wave Players -> Output" if loops else "Random -> Wave Players -> Output"
+    # A master for one wave is a Wave Player that loops by itself, like vanilla, under an Enveloper whose
+    # volume curve (set by hand: 0 -> 1 over the first seconds) fades the cue in once
+    single = len(waves) == 1
+    if single:
+        kind = "Wave Player -> Enveloper -> Output"
+    else:
+        kind = "Looping -> Random -> Wave Players -> Output" if loops else "Random -> Wave Players -> Output"
     master = find_master(path)
     if master is None:
         return [path + " does not exist (make it by hand: " + kind + ")"], None
@@ -117,25 +135,16 @@ def check_master(path, loops, waves):
     randoms = nodes.get("SoundNodeRandom", [])
     loopers = nodes.get("SoundNodeLooping", [])
     players = nodes.get("SoundNodeWavePlayer", [])
-    if len(randoms) != 1:
+    # ChildNodes cannot be read from Python, so the wiring is checked through the cue's duration below
+    if single and (randoms or loopers):
+        problems.append("only a Wave Player and an Enveloper are needed (the player loops), remove Random/Looping")
+    if single and len(nodes.get("SoundNodeEnveloper", [])) != 1:
+        problems.append("needs exactly one Enveloper between the Wave Player and Output (the fade-in)")
+    if not single and len(randoms) != 1:
         problems.append("{} Random nodes, needs exactly one".format(len(randoms)))
-    else:
-        try:  # ChildNodes may not be readable from Python; the wiring is then left to the in-game test
-            wired = len([n for n in randoms[0].get_editor_property("child_nodes") if n])
-            if wired != len(players):
-                problems.append("Random has {} inputs wired, needs all {} Wave Players".format(wired, len(players)))
-        except Exception:
-            pass
-    if loops and not loopers:
+    if not single and loops and not loopers:
         problems.append("no Looping node between Random and Output")
-    elif loops and len(randoms) == 1:
-        try:
-            inputs = [n for n in loopers[0].get_editor_property("child_nodes") if n]
-            if len(inputs) != 1 or inputs[0] != randoms[0]:
-                problems.append("Random is not wired into the Looping node")
-        except Exception:
-            pass
-    if not loops and loopers:
+    if not single and not loops and loopers:
         problems.append("has a Looping node, this master must play once")
     try:
         duration = master.get_editor_property("duration")
@@ -144,7 +153,7 @@ def check_master(path, loops, waves):
         warn("{}: cannot read duration ({}), wiring not checked".format(master.get_name(), e))
     if duration is not None and duration <= 0:
         problems.append("nothing is wired to Output")
-    elif duration is not None and loops and duration < INDEFINITELY_LOOPING:
+    elif duration is not None and loops and not single and duration < INDEFINITELY_LOOPING:
         problems.append("the Looping node is not wired between Random and Output")
     if len(players) != len(waves):
         problems.append("{} Wave Players, needs {} (one per wave)".format(len(players), len(waves)))
@@ -164,11 +173,12 @@ def check_master(path, loops, waves):
             for player, wave in zip(sorted(players, key=lambda p: p.get_name()), wave_objs):
                 set_wave(player, wave)
     if not DRY_RUN:
-        set_prop(randoms[0], "randomize_without_replacement", True)
+        for random_node in randoms:
+            set_prop(random_node, "bRandomizeWithoutReplacement", True)
         for looper in loopers:
-            set_prop(looper, "loop_indefinitely", True)
+            set_prop(looper, "bLoopIndefinitely", True)
         for player in players:
-            set_prop(player, "looping", False)
+            set_prop(player, "bLooping", single and loops)
         ASSETS.save_loaded_asset(master, False)
     return [], master
 
@@ -185,6 +195,10 @@ def apply_cue_props(cue, row):
     set_prop(cue, "priority", float(row["priority"]))
     set_prop(cue, "volume_multiplier", float(row["volume"]))
     set_prop(cue, "exclude_from_random_node_branch_culling", True)
+    # The game ducks music categories with sound mixes (cave music during a swarm). With the default Restart
+    # a looping cue silenced that way is virtualized and comes back from the very start of the same track;
+    # PlayWhenSilent keeps it running, so it resumes where it would be.
+    set_prop(cue, "virtualization_mode", unreal.VirtualizationMode.PLAY_WHEN_SILENT)
 
 
 def main():
@@ -206,13 +220,17 @@ def main():
     if problems:
         raise RuntimeError("master cues are not ready (see docs/rotation.md):\n  " + "\n  ".join(problems))
 
+    done, shifts = [], {}
     with unreal.ScopedSlowTask(len(rows), "Replacing mission-music cues") as slow:
         slow.make_dialog(True)
         for row in rows:
             slow.enter_progress_frame(1, row["cue_path"])
             master, path = masters[row["master"]], row["cue_path"]
+            shift = shifts.get(row["category"], 0)  # counts across all masters of the category
+            shifts[row["category"]] = shift + 1
             vanilla = ASSETS.does_asset_exist(path)
-            log("{} {} <- {}".format("replace" if vanilla else "create", path, master.get_name()))
+            log("{} {} <- {}, wave order shifted by {}".format(
+                "replace" if vanilla else "create", path, master.get_name(), shift))
             if DRY_RUN:
                 continue
             if vanilla and not ASSETS.delete_asset(path):
@@ -220,11 +238,13 @@ def main():
             cue = ASSETS.duplicate_loaded_asset(master, path)
             if cue is None:
                 raise RuntimeError("could not duplicate {} to {}".format(master.get_path_name(), path))
+            order = shift_waves(cue, row["waves"].split(), shift)
             apply_cue_props(cue, row)
             ASSETS.save_loaded_asset(cue, False)
+            done.append("{}\t{}".format(path, " ".join(order)))
     if not DRY_RUN:
-        with open(DONE, "w", encoding="utf-8") as f:
-            f.write("\n".join(r["cue_path"] for r in rows) + "\n")
+        with open(DONE, "w", encoding="utf-8") as f:  # cue path, then the wave of each Wave Player by node name
+            f.write("\n".join(done) + "\n")
     log("done: {} cues {}".format(len(rows), "checked" if DRY_RUN else "replaced and saved"))
 
 

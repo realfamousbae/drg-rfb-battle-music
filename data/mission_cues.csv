@@ -13,7 +13,7 @@ cue_path,name,category,loops,sound_class,submix,priority,volume,waves
 /Game/Audio/Music/Music_Level/St_ST_Cue,St_ST_Cue,ambient,true,/Game/Audio/SoundControl/SoundClasses/Music_Background,/Game/Audio/SoundControl/SubMixes/MusicSubmix,100,0.55,St_ST_Master_1
 /Game/Audio/Music/Music_Level/St_Slow_Cue,St_Slow_Cue,ambient,true,/Game/Audio/SoundControl/SoundClasses/Music_Background,/Game/Audio/SoundControl/SubMixes/MusicSubmix,100,0.45,St_Slow_Master_1
 /Game/Audio/Music/Music_Level/St_ValleyOfDeath_Cue,St_ValleyOfDeath_Cue,ambient,true,/Game/Audio/SoundControl/SoundClasses/Music_Background,/Game/Audio/SoundControl/SubMixes/MusicSubmix,100,0.6,ST_ValleyOfDeath_Master_3
-/Game/Audio/Music/Boss/RC_Rift_Looping_1_Cue,RC_Rift_Looping_1_Cue,boss,true,/Game/Audio/SoundControl/SoundClasses/Music_Boss,/Game/Audio/SoundControl/SubMixes/MusicSubmix,,,RC_Rift_Master3_Looping
+/Game/Audio/Music/Boss/RC_Rift_Looping_1_Cue,RC_Rift_Looping_1_Cue,boss,true,/Game/Audio/SoundControl/SoundClasses/Music_Boss,/Game/Audio/SoundControl/SubMixes/MusicSubmix,,0.65,RC_Rift_Master3_Looping
 /Game/Audio/Music/Boss/St_Boss_Music_Cue,St_Boss_Music_Cue,boss,true,/Game/Audio/SoundControl/SoundClasses/Music_Boss,/Game/Audio/SoundControl/SubMixes/MusicSubmix,50,0.85,St_Nova_Master_1
 /Game/Audio/Music/Boss/St_InsterstellarNightmares_Cue,St_InsterstellarNightmares_Cue,boss,true,/Game/Audio/SoundControl/SoundClasses/Music_Boss,/Game/Audio/SoundControl/SubMixes/MusicSubmix,50,0.85,ST_InterstellarNightmares_Master_3
 /Game/Audio/Music/Boss/St_Stalker_Cue,St_Stalker_Cue,boss,true,/Game/Audio/SoundControl/SoundClasses/Music_Boss,/Game/Audio/SoundControl/SubMixes/MusicSubmix,50,0.85,St_Stalker_Master_1

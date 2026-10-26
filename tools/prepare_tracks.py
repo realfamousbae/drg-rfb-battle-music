@@ -39,8 +39,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from common import (BUILD, BUILD_CUES_CSV, CUE_DEFAULT_PRIORITY, CUE_DEFAULT_VOLUME, CUES_CSV, CUTS_CSV,
-                    DEFAULT_CATEGORIES, IMPORT_DIR, MANIFEST_CSV, MAPPING_CSV, MASTERS_DIR, REPO, WAVE_PROPS, die,
-                    load_slots, master_name, read_csv, write_csv)
+                    DEFAULT_CATEGORIES, EXTRA_SLOTS, IMPORT_DIR, MANIFEST_CSV, MAPPING_CSV, MASTERS_DIR, REPO,
+                    SINGLE_LOOP_MASTER, WAVE_PROPS, die, load_slots, master_name, read_csv, write_csv)
 
 TRACKS_DIR = REPO / "tracks"
 NORMALIZED_DIR = BUILD / "normalized"
@@ -48,17 +48,23 @@ AUDIO_EXTS = {".mp3", ".flac", ".wav", ".ogg", ".opus", ".m4a", ".aac", ".aif", 
 MANIFEST_FIELDS = ["asset_path", "wav", "track", "category", "duration_sec", "output_lufs"] + WAVE_PROPS
 BUILD_CUE_FIELDS = ["cue_path", "category", "loops", "master", "sound_class", "submix", "priority", "volume",
                     "waves"]
+EXTRA_WAVES = {s["asset_path"] for s in EXTRA_SLOTS}
 
 TRIM_FILTER = ("silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.05,"
                "areverse,"
                "silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.3,"
                "areverse")
 
-FADE_IN = 0.3
-FADE_OUT = 2.5
+FADE_IN = 6.0   # one-shot slots; looping slots fade in through the cue (RFB_single_loop: an Enveloper node)
+FADE_OUT = 6.0
 LOOP_XFADE = 1.5
 LOOP_PREROLL = 4.0   # seconds before the drop that lead back into it at the loop point
 MAX_TAIL_GAP = 10.0  # up to this many seconds short of the slot: end naturally + silence instead of looping
+# Fades of rotation waves: the game starts these cues without a fade of its own, and every track of a rotation
+# both starts and ends inside the cue. Swarm keeps a little more punch on its drop.
+ROTATION_FADE_IN = {"ambient": 6.0, "swarm": 5.0}
+ROTATION_FADE_IN_DEFAULT = 6.0
+ROTATION_FADE_OUT = 6.0
 
 
 def run_ffmpeg(args):
@@ -215,7 +221,7 @@ def render_once(src, dst, total, cut, end, slot_dur, fit, sample_rate):
     if end is not None:
         total = min(total, end)
     remaining = total - start
-    fade_in = f",afade=t=in:d={FADE_IN}" if start > 0 else ""
+    fade_in = f",afade=t=in:d={FADE_IN}"
     if not fit:
         graph = (f"[0:a]atrim=start={start}:duration={remaining:.3f},asetpts=PTS-STARTPTS{fade_in},"
                  f"afade=t=out:st={max(0.0, remaining - FADE_OUT):.3f}:d={FADE_OUT}[out]")
@@ -274,14 +280,17 @@ def render_loop(src, dst, total, cut, end, slot_dur, fit, sample_rate):
     return probe_duration(dst), note
 
 
-def render_rotation(src, dst, cut, sample_rate):
+def render_rotation(src, dst, cut, category, sample_rate):
     """A wave of a rotation cue (--rotate): when it ends the cue picks another track, so it plays from the
-    drop to the natural end of the song. `end` from cuts.csv is a loop point and is not used. Trailing
-    silence is cut so the next track follows right away; a short fade covers clips that stop abruptly."""
-    fade_in = f",afade=t=in:d={FADE_IN}" if cut > 0 else ""
-    graph = (f"[0:a]atrim=start={cut},asetpts=PTS-STARTPTS{fade_in},"
+    drop to the natural end of the song. `end` from cuts.csv is a loop point and is not used. Leading and
+    trailing silence is cut so the next track follows right away. Every wave fades in (ROTATION_FADE_IN: the
+    game starts these cues abruptly) and fades out at its end (ROTATION_FADE_OUT)."""
+    fade_in = ROTATION_FADE_IN.get(category, ROTATION_FADE_IN_DEFAULT)
+    graph = (f"[0:a]atrim=start={cut},asetpts=PTS-STARTPTS,"
+             "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.05,"
+             f"afade=t=in:d={fade_in},"
              "areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.2,"
-             f"afade=t=in:d={FADE_OUT},areverse[out]")
+             f"afade=t=in:d={ROTATION_FADE_OUT},areverse[out]")
     render(src, dst, graph, sample_rate)
     return probe_duration(dst), f"{cut:.0f}s to end, rotation"
 
@@ -311,6 +320,32 @@ def rotation_cues(rotate, slots):
                          "sound_class": c["sound_class"], "submix": c["submix"],
                          "priority": f"{priority:g}", "volume": f"{volume:g}",
                          "waves": waves})
+    return rows
+
+
+def single_loop_cues(slots, rotate):
+    """build/import/cues.csv rows for the looping cues outside the rotation: each becomes a copy of
+    SINGLE_LOOP_MASTER that fades its wave in once and keeps the vanilla SoundClass, submix, Priority and
+    volume. This also re-points LoadingScreenMusic_Cue at the mod's own wave (EXTRA_SLOTS in common.py)."""
+    if not CUES_CSV.exists():
+        die(f"{CUES_CSV.relative_to(REPO)} not found - run tools/scan_slots.py first")
+    by_name = {c["name"]: c for c in read_csv(CUES_CSV)}
+    rows = []
+    for s in slots:
+        if s["category"] in rotate:
+            continue
+        for name in s["cue"].split():
+            c = by_name.get(name)
+            if c is None:
+                die(f"{name} (plays {s['name']}) not in {CUES_CSV.relative_to(REPO)} - run tools/scan_slots.py")
+            # a wave shared with another category (St_Deep_Master_1 + the loading screen) belongs to that cue
+            if c["loops"] != "true" or (c["category"] != s["category"] and s["asset_path"] not in EXTRA_WAVES):
+                continue
+            rows.append({"cue_path": c["cue_path"], "category": s["category"], "loops": "true",
+                         "master": f"{MASTERS_DIR}/{SINGLE_LOOP_MASTER}",
+                         "sound_class": c["sound_class"], "submix": c["submix"],
+                         "priority": c["priority"] or f"{CUE_DEFAULT_PRIORITY:g}",
+                         "volume": c["volume"] or f"{CUE_DEFAULT_VOLUME:g}", "waves": s["asset_path"]})
     return rows
 
 
@@ -372,7 +407,7 @@ def build(args):
         if end is not None and end <= cut + 10:
             die(f"cuts.csv: end {end:g}s must be well after start {cut:g}s for {track.name}")
         if s["category"] in rotate:
-            duration, note = render_rotation(norm, wav, cut, args.sample_rate)
+            duration, note = render_rotation(norm, wav, cut, s["category"], args.sample_rate)
         elif s.get("cue_loops") == "true" or (not s.get("cue_loops") and s["category"] == "pressure"):
             if end is None:
                 no_loop_end.append(track.name)
@@ -389,7 +424,7 @@ def build(args):
                      "track": track.name, "category": s["category"], "duration_sec": round(duration, 2),
                      "output_lufs": info["output_lufs"]})
     write_csv(MANIFEST_CSV, MANIFEST_FIELDS, rows)
-    cue_rows = rotation_cues(rotate, slots) if rotate else []
+    cue_rows = (rotation_cues(rotate, slots) if rotate else []) + single_loop_cues(slots, rotate)
     if cue_rows:
         write_csv(BUILD_CUES_CSV, BUILD_CUE_FIELDS, cue_rows)
 
@@ -420,7 +455,11 @@ def build(args):
             masters = sorted({c["master"].rsplit("/", 1)[1] for c in mine})
             print(f"rotation {cat}: {len(mine)} cues ({loops} looping), {len(mine[0]['waves'].split())} waves each, "
                   f"volume x{mine[0]['volume']}, masters {', '.join(masters)}")
-        if args.fit_slots:
+        single = [c for c in cue_rows if c["category"] not in rotate]
+        if single:
+            print(f"{SINGLE_LOOP_MASTER} (fade-in): {len(single)} looping cues - "
+                  f"{', '.join(sorted({c['category'] for c in single}))}")
+        if args.fit_slots and rotate:
             print("note: --fit-slots does not apply to rotation waves (they play to the end of the song)")
         print(f"cues to replace: {BUILD_CUES_CSV.relative_to(REPO)} (ue_cues.py)")
     print(f"\n{len(rows)} slots -> {IMPORT_DIR.relative_to(REPO)}/, manifest: {MANIFEST_CSV.relative_to(REPO)}")

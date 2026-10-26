@@ -51,3 +51,5 @@ St_Clutch_Master_1,40
 ST_GameEvent_Master_1,41
 St_Action_Master_1,42
 ST_Where_They_Really_DareDLoop_1,43
+# loading screen: own wave and cue (common.py EXTRA_SLOTS)
+RFB_LoadingScreen_Master,44

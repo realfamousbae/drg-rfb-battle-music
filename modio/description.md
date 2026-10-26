@@ -7,28 +7,28 @@
 | Name | `RFB Battle Music` |
 | Visibility | Hidden (friends are added to the mod's Team) |
 | Tags | `Audio` (no `[AimedFor...]`) |
-| Game Version | the one the pak was built and tested on (1.40, Steam build 26107973, for v1.0.0) |
+| Game Version | the one the pak was built and tested on (1.40, Steam build 26107973, for v1.0.0 and v1.1.0) |
 | Required | `Optional`: client-side, other players don't need it |
 | Logo | `modio/logo.png`, 16:9, at least 512×288 |
-| File | `dist/RFB_BattleMusic.zip` |
+| File | `RFB_BattleMusic-<version>.zip` from the GitHub release |
 
 ## Summary
 ```
-Replaces the mission music of Deep Rock Galactic (swarms, long fights, extraction, Dreadnoughts, Core Stone, cave ambient and mission screens) with 39 tracks by Lida, CMH and friends. Audio only, client-side.
+Replaces the mission music of Deep Rock Galactic (swarms, long fights, extraction, Dreadnoughts, Core Stone, cave ambient and mission screens) with 39 tracks by Lida, CMH and friends. Swarms and cave music rotate through all their tracks. Audio only, client-side.
 ```
 
 ## Description
 ```
-Swaps the whole mission soundtrack for 39 tracks by Lida, CMH and friends: all 44 music slots of a mission, from the cave ambient to the Dreadnought fight.
+Swaps the whole mission soundtrack for 39 tracks by Lida, CMH and friends: all 44 music slots of a mission, from the cave ambient to the Dreadnought fight, plus a track of its own for the mission loading screen.
 
-- Swarms, long fights, extraction, Dreadnoughts and the Core Stone rift.
-- Cave ambient (it also plays on the mission loading screen), Machine Event, the mission statistics screen and the Deep Dive screen between stages.
-- Every track starts right at its hook/drop. Where the game loops the music, the loop wraps back to the drop.
+- Swarms and cave music rotate: every swarm plays a new track, and the cave music moves on to another track when one ends, without repeats until all have played.
+- Long fights, extraction, Dreadnoughts and the Core Stone rift, Machine Event, the mission statistics screen and the Deep Dive screen between stages.
+- Every track fades in and out. After a swarm the cave music carries on instead of starting the same track again.
 - Audio-only mod: progression and regular lobbies are unaffected.
-- Client-side: only you hear it, other players don't need the mod.
+- Client-side: only you hear it, other players don't need the mod. With the rotation, friends with the mod may hear different tracks in the same mission.
 - Space Rig music and the Abyss Bar jukebox stay vanilla (the jukebox has its own mod, RFB Jukebox).
 
-Меняет всю музыку миссий на 39 треков Lida, CMH и друзей: все 44 музыкальных слота миссии, от фона пещеры до боя с дредноутом. Рой, затяжные бои, эвакуация, дредноуты, разлом Core Stone, фон пещеры (он же играет на загрузке миссии), Machine Event, экран статистики и экран между этапами Deep Dive. Каждый трек начинается с хука или дропа, зацикленная музыка возвращается на дроп. Только звук, работает на клиенте: слышишь только ты, остальным мод не нужен. Музыка Space Rig и джукбокс в баре не меняются.
+Меняет всю музыку миссий на 39 треков Lida, CMH и друзей: все 44 музыкальных слота миссии, от фона пещеры до боя с дредноутом, и свой трек на экран загрузки. Рой и фон пещеры играют все свои треки по очереди в случайном порядке: каждый рой — новый трек, фон сменяется, когда трек доиграл, без повторов, пока не прозвучат все. Затяжные бои, эвакуация, дредноуты, разлом Core Stone, Machine Event, экран статистики и экран между этапами Deep Dive. Все треки плавно появляются и затихают, после роя фон продолжается, а не начинает тот же трек заново. Только звук, работает на клиенте: слышишь только ты, остальным мод не нужен. Музыка Space Rig и джукбокс в баре не меняются.
 
 Swarms / Рой:
 - Lida, Серега Пират — ЧСВ
@@ -39,8 +39,8 @@ Swarms / Рой:
 - Toxi$, Lida — ТРЯСИ
 - Lida — Фотки
 - GAZIK 202 — гетто район
-- Lida — BDSM
-- Lida — Танцуй или умри
+- Lida — Послевкусие виски
+- CMH — РПТ
 
 Long fights / Затяжные бои:
 - CMH — Сейчас или никогда
@@ -67,21 +67,22 @@ Dreadnoughts and Core Stone / Дредноуты и Core Stone:
 Cave ambient / Фон пещеры:
 - Lida — Иголка
 - Lida — Схожу от тебя с ума
-- Lida — Не грусти покури отпустит
+- Lida — Хочется забыться
 - Lida — Одинокими
 - Lida — Звездопад
 - Lida — Послевкусие виски
 - Lida — Печальная
 - CMH, Shark — Засыпаю
-- Lida — Медляк
-- Lida, Tenderlybae — Грустный реп (also the loading screen / и экран загрузки)
+- Lida — Слёзки
+- Lida — Одинокий волк
 - Lida — Рок звезда должна умереть
-- Lida, DK — Анапа
+- ЮГ 404 — Плачем на рейвах
 - madk1d — так похуй
 - Lida — Дождь
 
 Events and screens / События и экраны:
-- Machine Event: CMH — УБЕЙ
+- Mission loading screen / Загрузка миссии: Lida — На рейвах
+- Machine Event: CMH, mzlff — бэйслайн бизнес
 - Mission statistics / Статистика миссии: CMH — А МОЖЕТ ДА
 - Deep Dive, between stages / между этапами: Lida — Фотки
 
