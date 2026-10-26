@@ -32,7 +32,7 @@ cues stay vanilla and keep deciding what plays when. Categories, cues and durati
 | `deepdive` | 1 | 0:52 | yes | between Deep Dive stages |
 | `ambient` | 14 | 4:32 – 9:05 | all | cave background; `St_Deep_Master_1` is also the loading screen |
 
-What is known and what isn't yet:
+Things worth knowing:
 
 - Mission waves carry no SoundClass or attenuation: those live on the cue. The `*_Master_*` waves are
   streamed, the seven `pressure` loops are not (their audio sits in `.uexp`). The import reproduces these
@@ -40,16 +40,14 @@ What is known and what isn't yet:
 - Almost every mission cue **loops its wave** until the game stops the cue: ambient, boss, extraction,
   Machine Event, Deep Dive and half of the swarm cues. Only the statistics screen and five swarm cues play
   once. So looping slots get a seamless loop from the drop to the `end` point in `cuts.csv`.
-- **Not verified in game yet**: whether the game cuts mission music at the vanilla duration, as it does for
-  the jukebox, and whether the loops wrap without a gap. To check: «ЧСВ» in the `St_Tick_Master_1` swarm
-  (135 s vs 226 s vanilla), Refinery pumping or the Ommoran in Escort. If it is cut, build with `-FitSlots`.
+- The game may cut mission music at the vanilla duration, as it does for the jukebox. If so, build with `-FitSlots`.
 - `data/mission_slots.csv` was scanned from the live 1.40 game pak (2026-10-25). Compared to the U38P10
   template, only the Core Stone rift slot was added.
 - The game picks **one cue per category for the whole mission**, so in 1.0.0 the swarm and the cave music
   play one track each for the whole run. Since 1.1.0 the release is built with the rotation
   (`-Rotate swarm,ambient`): copies of master cues with a Random node over every track of the category
   replace the vanilla cues, and the other looping cues get a fade-in: [docs/rotation.md](docs/rotation.md)
-  (Russian). Tested in game.
+  (Russian).
 
 ## Layout
 
@@ -62,7 +60,7 @@ data/
   mapping.csv          which track goes into which slot (example: mapping.example.csv)
 docs/
   mission-music.md     how the mission music system works
-  rotation.md          track rotation within a mission: master cues, build, in-game check
+  rotation.md          track rotation within a mission: master cues, build
   tracklist.md         track-to-slot layout with reasons
 tools/
   scan_slots.py        waves and cues from the game pak (repak unpack) or the template's Audio.zip
